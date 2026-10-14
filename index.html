@@ -122,7 +122,7 @@ body{font-family:var(--body);color:var(--text);background:#d9dde0;height:100%;ov
 .appbar{min-height:50px!important;padding:6px 60px 4px 14px!important}
 .appbar .titles{padding-left:0!important}
 .appbar .title{font:500 13px/1 var(--body)!important;letter-spacing:.08em;color:rgba(255,255,255,.75);margin:0!important}
-.profile{flex:0 0 auto;background:var(--teal);color:#fff;font:500 16px/1.3 var(--body);white-space:nowrap;overflow:hidden;padding:0 44px 10px 14px}
+.profile{flex:0 0 auto;background:var(--teal);color:#fff;font:500 16px/1.3 var(--body);white-space:nowrap;overflow:hidden;padding:0 14px 10px 14px}
 </style>
 </head>
 <body>
@@ -171,11 +171,11 @@ function dlPDF(id){const r=S.disp.find(x=>x.id===id);
 /* shell */
 function shell(inner,foot){
   const m=S.me,tabs=[['dash','DASHBOARD'],['disp','DISPATCH'],['rec','RECORDS'],['sync','SYNC']];
-  app.innerHTML=`<div class="appbar"><div class="titles"><div class="title">ITN MOVEMENT</div></div><button class="ico-btn" title="Sign out" onclick="signOut()"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42A6.92 6.92 0 0119 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.27 1.08-4.28 2.76-5.56L6.34 5.02A8.95 8.95 0 003 12a9 9 0 0018 0c0-2.74-1.23-5.19-3.17-6.83z"/></svg></button></div>
-  <div class="profile" id="pf">${esc(m.name)} - ${esc(m.role)} - ${esc(m.district)}</div>
+  app.innerHTML=`<div class="appbar"><div class="titles"><div class="title">ITN MOVEMENT</div></div><button class="ico-btn" title="Sign out" onclick="signOut()"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg></button></div>
+  <div class="profile" id="pf">Name: ${esc(m.name)}${m.id?` - ID: ${esc(m.id)}`:''} - Role: ${esc(m.role)} - District: ${esc(m.district)}</div>
   <div class="tabs">${tabs.map(t=>`<button class="tab ${ui.tab===t[0]?'on':''}" onclick="go('${t[0]}')">${t[1]}${t[0]==='sync'&&pend()?`<span class="badge">${pend()}</span>`:''}</button>`).join('')}</div>
   <div class="body" id="bd"><div class="list">${inner}</div></div>${foot?`<div class="footer">${foot}</div>`:''}${VER}`;
-  const pf=$('pf');let z=16;pf.style.fontSize=z+'px';while(pf.scrollWidth>pf.clientWidth&&z>8){z-=.5;pf.style.fontSize=z+'px';}
+  const pf=$('pf');let z=15;pf.style.fontSize=z+'px';while(pf.scrollWidth>pf.clientWidth&&z>6){z-=.25;pf.style.fontSize=z+'px';}
 }
 function go(t){ui.tab=t;ui.rec=null;ui.fresh=false;if(t==='disp'){ui.step=1;ui.d={};}render();}
 function render(){
@@ -200,10 +200,15 @@ let stream=null,raf=0,bad='';
 function stopScan(){cancelAnimationFrame(raf);if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}}
 function cancelScan(){stopScan();closeModal();}
 function parseCard(t){
-  t=String(t||'').trim();let n,r,d;
-  try{const j=JSON.parse(t),g=k=>{const f=Object.keys(j).find(x=>x.toLowerCase()===k);return f?String(j[f]).trim():'';};n=g('name');r=g('role');d=g('district');}catch(e){}
-  if(!(n&&r&&d)){const p=t.split(/\s*[|;,\n]\s*|\s+[-–—]\s+/).map(x=>x.trim()).filter(Boolean);if(p.length>=3){n=p[0];r=p[1];d=p[2];}}
-  return n&&r&&d?{name:n,role:r,district:d}:null;
+  t=String(t||'').trim();let n,i,r,d;
+  try{const j=JSON.parse(t),g=k=>{const f=Object.keys(j).find(x=>x.toLowerCase()===k);return f?String(j[f]).trim():'';};n=g('name');i=g('id');r=g('role');d=g('district');}catch(e){}
+  if(!(n&&r&&d)){
+    const p=t.split(/\s*[|;,\n]\s*|\s+[-–—]\s+/).map(x=>x.trim()).filter(Boolean);
+    if(p.some(x=>/^(name|id|role|district)\s*[:=]/i.test(x))){p.forEach(x=>{const m=x.match(/^(name|id|role|district)\s*[:=]\s*(.*)$/i);if(!m)return;const k=m[1].toLowerCase(),v=m[2].trim();if(k==='name')n=v;else if(k==='id')i=v;else if(k==='role')r=v;else d=v;});}
+    else if(p.length>=4){[n,i,r,d]=p;}
+    else if(p.length===3){[n,r,d]=p;}
+  }
+  return n&&r&&d?{name:n,id:i||'',role:r,district:d}:null;
 }
 function onCode(t){
   const c=parseCard(t);
@@ -219,7 +224,7 @@ function scan(){
   bad='';
   modal(`<h3>Scan QR ID card</h3><p id="smsg">Align your staff QR ID card within the camera view.</p><div class="vf"><video id="sv" playsinline muted></video></div><canvas id="sc" style="display:none"></canvas>
   <div class="acts"><button class="btn btn-ghost" onclick="cancelScan()">Cancel</button><label class="btn btn-ghost" style="cursor:pointer">Choose image<input type="file" accept="image/*" hidden onchange="fileScan(this)"></label></div>
-  <div style="text-align:center;margin-top:12px"><a href="#" style="font:400 13px var(--body);color:var(--info)" onclick="event.preventDefault();onCode('Demo Conveyor|Conveyor|Bo')">Use demo ID card</a></div>`);
+  <div style="text-align:center;margin-top:12px"><a href="#" style="font:400 13px var(--body);color:var(--info)" onclick="event.preventDefault();onCode('Demo Conveyor|SBD-000000001|Conveyor|Bo')">Use demo ID card</a></div>`);
   startCam();
 }
 async function startCam(){
