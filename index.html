@@ -172,7 +172,7 @@ function dlPDF(id){const r=S.disp.find(x=>x.id===id);
 function shell(inner,foot){
   const m=S.me,tabs=[['dash','DASHBOARD'],['disp','DISPATCH'],['rec','RECORDS'],['sync','SYNC']];
   app.innerHTML=`<div class="appbar"><div class="titles"><div class="title">ITN MOVEMENT</div></div><button class="ico-btn" title="Sign out" onclick="signOut()"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg></button></div>
-  <div class="profile" id="pf">Name: ${esc(m.name)}${m.id?` - ID: ${esc(m.id)}`:''} - Role: ${esc(m.role)} - District: ${esc(m.district)}</div>
+  <div class="profile" id="pf">Name: ${esc(m.name)} - Role: ${esc(m.role)} - District: ${esc(m.district)}</div>
   <div class="tabs">${tabs.map(t=>`<button class="tab ${ui.tab===t[0]?'on':''}" onclick="go('${t[0]}')">${t[1]}${t[0]==='sync'&&pend()?`<span class="badge">${pend()}</span>`:''}</button>`).join('')}</div>
   <div class="body" id="bd"><div class="list">${inner}</div></div>${foot?`<div class="footer">${foot}</div>`:''}${VER}`;
   const pf=$('pf');let z=15;pf.style.fontSize=z+'px';while(pf.scrollWidth>pf.clientWidth&&z>6){z-=.25;pf.style.fontSize=z+'px';}
@@ -190,7 +190,7 @@ function welcome(){
   <div class="wl-steps"><span><b>1</b>Sign in</span><span><b>2</b>Dispatch</span><span><b>3</b>PHU scans</span></div></div>
   <div class="wl-sheet"><p><b>Welcome!</b> Sign in with your staff QR ID card. Record bales received at the DMS, then dispatch ITNs from the DMS to health facilities. The PHU scans your receipt QR to receive the nets.</p>
   <div class="wl-act"><button class="btn btn-ghost" onclick="ui.seen=1;render()">Skip</button><button class="btn btn-primary" onclick="ui.seen=1;render()">Start</button></div>
-  <div class="wl-ft">Powered by DIGIT HCM & ICF-SL · Version 1.0</div></div></div>`;
+  <div class="wl-ft">National Malaria Control Programme · Version 1.0</div></div></div>`;
 }
 /* login */
 function login(){
@@ -210,10 +210,21 @@ function parseCard(t){
   }
   return n&&r&&d?{name:n,id:i||'',role:r,district:d}:null;
 }
+let pendingCard=null;
 function onCode(t){
   const c=parseCard(t);
   if(!c){if(t!==bad){bad=t;toast('Unrecognised ID card');}return false;}
-  stopScan();closeModal();S.me=c;save();ui={tab:'dash',step:1,d:{},rec:null,off:false,fresh:false};render();toast('Signed in as '+c.name);return true;
+  stopScan();pendingCard=c;
+  const row=(k,v)=>`<div class="kv"><span>${k}</span><b>${esc(v||'—')}</b></div>`;
+  modal(`<h3>QR code scanned</h3><p>Check the details read from the ID card.</p>
+  <div class="card" style="box-shadow:none;border:1px solid var(--line);padding:6px 14px;margin-bottom:10px">${row('Name',c.name)}${row('ID',c.id)}${row('Role',c.role)}${row('District',c.district)}</div>
+  <div class="lbl" style="font-size:12.5px;color:var(--muted);margin-bottom:4px">QR CONTENT</div>
+  <div style="font:400 12px/1.45 monospace;background:var(--grey);border-radius:6px;padding:8px 10px;word-break:break-all;max-height:84px;overflow:auto">${esc(t)}</div>
+  <div class="acts"><button class="btn btn-ghost" onclick="scan()">SCAN AGAIN</button><button class="btn btn-primary" onclick="confirmLogin()">CONTINUE ›</button></div>`);
+  return true;
+}
+function confirmLogin(){
+  closeModal();S.me=pendingCard;save();ui={tab:'dash',step:1,d:{},rec:null,off:false,fresh:false};render();toast('Signed in as '+S.me.name);
 }
 async function decodeCanvas(cv){
   if(window.BarcodeDetector){try{const r=await new BarcodeDetector({formats:['qr_code']}).detect(cv);if(r[0])return r[0].rawValue;}catch(e){}}
