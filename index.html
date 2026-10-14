@@ -134,10 +134,36 @@ body{font-family:var(--body);color:var(--text);background:#d9dde0;height:100%;ov
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
 const KEY='itn_movement_v2';
-const DISTRICTS=['Bo','Bombali','Bonthe','Falaba','Kailahun','Kambia','Karene','Kenema','Koinadugu','Kono','Moyamba','Port Loko','Pujehun','Tonkolili','Western Area Rural','Western Area Urban'];
-const GEO={Bo:{'Kakua':['Kakua CHC','Njala Road CHP'],'Bo Town':['Bo Govt Hospital','Mattru Jong CHC'],'Badjia':['Badjia CHC','Gerihun CHC']},
- Kenema:{'Nongowa':['Kenema Govt Hospital','Hangha CHC'],'Dama':['Dama CHC']},
- Bombali:{'Bombali Sebora':['Rogbaneh CHC','Makeni Govt Hospital']}};
+let GEO={};
+const CSV_KEY='itn_cascade_csv';
+function parseCSV(t){
+  const rows=[];let r=[],f='',q=false;t=t.replace(/^\uFEFF/,'');
+  for(let i=0;i<t.length;i++){const c=t[i];
+    if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++;}else q=false;}else f+=c;}
+    else if(c=='"')q=true;else if(c==','){r.push(f);f='';}
+    else if(c=='\n'||c=='\r'){if(c=='\r'&&t[i+1]=='\n')i++;r.push(f);f='';if(r.some(x=>x.trim()))rows.push(r);r=[];}
+    else f+=c;}
+  r.push(f);if(r.some(x=>x.trim()))rows.push(r);return rows;
+}
+function loadCascade(t){
+  const rows=parseCSV(t);if(rows.length<2)return 0;
+  const h=rows[0].map(x=>x.trim()),ix=(re,d)=>{const i=h.findIndex(x=>re.test(x));return i<0?d:i;};
+  const di=ix(/district/i,0),ci=ix(/chiefdom|chief/i,1),pi=ix(/facility|phu|health|name/i,2),G={};let n=0;
+  rows.slice(1).forEach(r=>{const d=(r[di]||'').trim(),c=(r[ci]||'').trim(),p=(r[pi]||'').trim();if(!d||!c||!p)return;
+    G[d]=G[d]||{};G[d][c]=G[d][c]||[];if(!G[d][c].includes(p)){G[d][c].push(p);n++;}});
+  Object.keys(G).forEach(d=>Object.keys(G[d]).forEach(c=>G[d][c].sort()));
+  if(n)GEO=G;return n;
+}
+function loadCache(){try{const t=localStorage.getItem(CSV_KEY);if(t)loadCascade(t);}catch(e){}}
+async function initCascade(){
+  try{const r=await fetch('cascading_data.csv',{cache:'no-store'});if(!r.ok)return;const t=await r.text();
+    if(loadCascade(t)){try{localStorage.setItem(CSV_KEY,t);}catch(e){}if(S.me&&ui.tab==='disp'&&ui.step===1&&!ui.rec)dispatch();}}catch(e){}
+}
+function loadCsvFile(inp){
+  const f=inp.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{const n=loadCascade(String(rd.result));if(!n)return toast('Could not read district, chiefdom and facility columns');try{localStorage.setItem(CSV_KEY,String(rd.result));}catch(e){}toast('Loaded '+n+' facilities');dispatch();};
+  rd.readAsText(f);
+}
 let S={me:null,disp:[]};
 try{const r=localStorage.getItem(KEY);if(r)S=JSON.parse(r);}catch(e){}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
@@ -268,10 +294,13 @@ function grab(){const g=id=>$(id)?$(id).value:undefined,d=ui.d;
 function dispatch(){
   const d=ui.d;
   if(ui.step===1){
-    d.district=d.district||S.me.district;
-    const dl=[...new Set([...DISTRICTS,S.me.district])],G=GEO[d.district]||{},ch=Object.keys(G),ph=G[d.chiefdom]||[];
+    const dl=Object.keys(GEO).sort();
+    if(!d.district)d.district=dl.find(k=>k.toLowerCase()===String(S.me.district).toLowerCase())||'';
+    const G=GEO[d.district]||{},ch=Object.keys(G).sort();
+    if(!d.chiefdom&&ch.length===1)d.chiefdom=ch[0];
+    const ph=G[d.chiefdom]||[];if(!d.phu&&ph.length===1)d.phu=ph[0];
     const opt=(a,v,e)=>`<option value="">${a.length?'Select…':e}</option>`+a.map(c=>`<option ${v===c?'selected':''}>${esc(c)}</option>`).join('');
-    shell(`<div class="step">STEP 1 — DESTINATION</div><div class="card">
+    shell(`<div class="step">STEP 1 — DESTINATION</div>${dl.length?'':`<div class="flag bad">Destination list not loaded. Put <b>cascading_data.csv</b> in the same folder as this page, or choose it here.<br><label class="btn btn-ghost btn-sm" style="margin-top:10px;cursor:pointer">Choose cascading_data.csv<input type="file" accept=".csv,text/csv" hidden onchange="loadCsvFile(this)"></label></div>`}<div class="card">
     <div class="field"><div class="lbl">District <span class="req">*</span></div><select id="dist" onchange="grab();ui.d.chiefdom='';ui.d.phu='';dispatch()">${opt(dl,d.district)}</select></div>
     <div class="field"><div class="lbl">Chiefdom <span class="req">*</span></div><select id="chf" onchange="grab();ui.d.phu='';dispatch()">${opt(ch,d.chiefdom,'No chiefdoms configured')}</select></div>
     <div class="field"><div class="lbl">Health Facility / PHU <span class="req">*</span></div><select id="phu">${opt(ph,d.phu,'Select chiefdom first')}</select></div>
@@ -357,7 +386,7 @@ function sync(){
   `<button class="btn btn-primary" ${p?'':'disabled'} onclick="retry()">RETRY ALL PENDING</button>`);
 }
 function retry(){if(ui.off||navigator.onLine===false)return toast('No network connection');S.disp.forEach(r=>r.synced=true);save();sync();}
-render();
+loadCache();render();initCascade();
 </script>
 <script>
 function fit(){const p=document.querySelector('.phone');p.style.setProperty('--s',Math.min(1,(innerHeight-16)/864,(innerWidth-8)/410));}
