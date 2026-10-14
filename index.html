@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Conveyor</title>
-<title>DMS ->PHU INTs MOVEMENT</title>
+<title>ITN MOVEMENT</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Condensed:wght@500;700&display=swap" rel="stylesheet">
@@ -196,7 +195,7 @@ const qrText=r=>`ITN|${r.id}|${r.district}|${r.chiefdom}|${r.phu}|D${r.dual}|S${
 function qrSvg(r){const m=qrM(qrText(r)),n=m.length;let p='';m.forEach((row,y)=>row.forEach((v,x)=>{if(v)p+=`M${x+2} ${y+2}h1v1h-1z`;}));return `<svg viewBox="0 0 ${n+4} ${n+4}" shape-rendering="crispEdges"><path d="${p}" fill="#000"/></svg>`;}
 function dlQR(id){const r=S.disp.find(x=>x.id===id),m=qrM(qrText(r)),n=m.length,k=10,c=document.createElement('canvas');c.width=c.height=(n+4)*k;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.fillStyle='#000';m.forEach((row,y)=>row.forEach((v,x)=>{if(v)g.fillRect((x+2)*k,(y+2)*k,k,k);}));c.toBlob(b=>dl(b,r.id+'-QR.png'));toast('QR image saved');}
 function dlPDF(id){const r=S.disp.find(x=>x.id===id);
-  const L=['ICF-SL ITN MOVEMENT RECEIPT','','Dispatch ID: '+r.id,'Date & Time: '+fmt(r.t),'District: '+r.district,'Chiefdom: '+r.chiefdom,'Health Facility / PHU: '+r.phu,'Container: '+(r.container||'-'),'ITNs per Bale: '+(r.perBale||'-'),'Bales Scanned: '+(r.bales?r.bales.length:0),'Expected Bales: '+(r.expected||'-'),'Dual-AI ITNs: '+r.dual,'Standard ITNs: '+r.std,'TOTAL ITNs (Pieces): '+qty(r),'Vehicle Plate: '+r.plate,'Conveyor: '+r.conv,'Verification Code: '+r.code].map(x=>x.replace(/[^\x20-\x7e]/g,'-'));
+  const L=['ICF-SL ITN MOVEMENT RECEIPT','','Dispatch ID: '+r.id,'Date & Time: '+fmt(r.t),'District: '+r.district,'Chiefdom: '+r.chiefdom,'Health Facility / PHU: '+r.phu,'Container: '+(r.container||'-'),'ITNs per Bale: '+(r.perBale||'-'),'Bales Scanned: '+(r.bales?r.bales.length:0),'Expected Bales: '+(r.expected||'-'),'Dual-AI ITNs: '+r.dual,'Standard ITNs: '+r.std,'TOTAL ITNs (Pieces): '+qty(r),'Vehicle Plate: '+r.plate,'GPS: '+(r.gps?r.gps.lat+', '+r.gps.lng+' (+/- '+r.gps.acc+' m)':'-'),'Conveyor: '+r.conv,'Verification Code: '+r.code].map(x=>x.replace(/[^\x20-\x7e]/g,'-'));
   let c='BT /F1 13 Tf 50 780 Td 20 TL\n';L.forEach(l=>c+='('+l.replace(/[()\\]/g,'\\$&')+') Tj T*\n');c+='ET';
   const o=['<</Type/Catalog/Pages 2 0 R>>','<</Type/Pages/Kids[3 0 R]/Count 1>>','<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>','<</Length '+c.length+'>>stream\n'+c+'\nendstream','<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>'];
   let p='%PDF-1.4\n',off=[];o.forEach((x,i)=>{off.push(p.length);p+=(i+1)+' 0 obj\n'+x+'\nendobj\n';});const xr=p.length;
@@ -224,7 +223,7 @@ function welcome(){
   <div class="wl-steps"><span><b>1</b>Sign in</span><span><b>2</b>Dispatch</span><span><b>3</b>PHU scans</span></div></div>
   <div class="wl-sheet"><p><b>Welcome!</b> Sign in with your staff QR ID card. Record bales received at the DMS, then dispatch ITNs from the DMS to health facilities. The PHU scans your receipt QR to receive the nets.</p>
   <div class="wl-act"><button class="btn btn-ghost" onclick="ui.seen=1;render()">Skip</button><button class="btn btn-primary" onclick="ui.seen=1;render()">Start</button></div>
-  <div class="wl-ft">Powered by DIGIT HCM & ICF-SL · Version 1.0</div></div></div>`;
+  <div class="wl-ft">National Malaria Control Programme · Version 1.0</div></div></div>`;
 }
 /* login */
 function login(){
@@ -347,25 +346,40 @@ function dispatch(){
     shell(`<div class="step">STEP 2 — SCAN BALES</div>
     <div class="card" style="border:2px solid var(--teal);text-align:center"><div class="big">${n}</div><div style="font:500 12.5px var(--body);letter-spacing:.1em;color:var(--muted);margin-top:6px">BALES SCANNED</div><div class="big" style="font-size:30px;color:var(--orange);margin-top:12px">${n*per}</div><div style="font:500 12.5px var(--body);letter-spacing:.1em;color:var(--muted);margin-top:6px">TOTAL ITN PIECES</div></div>
     <div class="card"><div style="background:var(--grey);color:var(--teal);font:700 13px var(--body);letter-spacing:.06em;padding:12px;border-radius:6px;margin-bottom:12px">BALES IN THIS CONTAINER</div>
-    <div class="sub" style="margin:0 0 6px">Container: <b style="color:var(--teal)">${esc(d.container)}</b> · ${per} ITNs/bale</div>${ex?`<div class="sub" style="margin:0 0 6px">Expected: <b>${ex}</b> bales · ${n} scanned</div>`:''}
-    <button class="btn btn-primary btn-block" style="margin-top:8px" onclick="openBale()">SCAN NEXT BALE QR</button>
+    <div class="sub" style="margin:0 0 6px">Container: <b style="color:var(--teal)">${esc(d.container)}</b> · ${per} ITNs/bale</div>${ex?`<div class="sub" style="margin:0 0 10px">Expected: <b>${ex}</b> bales · <b>${n}</b> scanned</div>${n===ex?'<div class="flag ok">✓ All expected bales scanned.</div>':n>0?`<div class="flag bad">⚠ Only ${n} of ${ex} expected bales scanned. Scan ${ex-n} more before continuing.</div>`:''}`:''}
+    <button class="btn btn-primary btn-block" style="margin-top:8px" ${ex>0&&n>=ex?'disabled':''} onclick="openBale()">SCAN NEXT BALE QR</button>
     ${n?`<div style="margin-top:12px">${d.bales.map((b,i)=>`<div class="row"><span class="sm"><div class="t">${esc(b)}</div><div class="s">${per} ITNs</div></span><button class="ico-btn" style="color:var(--bad);width:34px;height:34px" onclick="rmBale(${i})">✕</button></div>`).join('')}</div>`:''}</div>`,
     `<button class="btn btn-ghost" onclick="ui.step=1;dispatch()">‹ BACK</button><button class="btn btn-primary" ${n?'':'disabled'} onclick="next2()">NEXT — VEHICLE DETAILS ›</button>`);
   }else if(ui.step===3){
-    shell(`<div class="step">STEP 3 — VEHICLE DETAILS</div><div class="card"><div class="lbl">Registration (prefix and number)</div><div class="two field"><input id="pre" maxlength="4" placeholder="DAF" autocapitalize="characters" value="${esc(d.pre||'')}" oninput="plate()" style="width:100%;height:48px;font:16px var(--body);padding:0 14px;border:1px solid var(--field);border-radius:4px;text-transform:uppercase"><input id="num" inputmode="numeric" maxlength="5" placeholder="902" value="${esc(d.num||'')}" oninput="plate()" style="width:100%;height:48px;font:16px var(--body);padding:0 14px;border:1px solid var(--field);border-radius:4px"></div><div style="text-align:center;margin-top:12px"><span class="plate" id="pl">${esc((d.pre||'---')+' - '+(d.num||'000'))}</span></div></div>`,
+    shell(`<div class="step">STEP 3 — VEHICLE DETAILS</div><div class="card"><div class="lbl">Registration (prefix and number)</div><div class="two field"><input id="pre" maxlength="4" placeholder="DAF" autocapitalize="characters" value="${esc(d.pre||'')}" oninput="plate()" style="width:100%;height:48px;font:16px var(--body);padding:0 14px;border:1px solid var(--field);border-radius:4px;text-transform:uppercase"><input id="num" inputmode="numeric" maxlength="5" placeholder="902" value="${esc(d.num||'')}" oninput="plate()" style="width:100%;height:48px;font:16px var(--body);padding:0 14px;border:1px solid var(--field);border-radius:4px"></div><div style="text-align:center;margin-top:12px"><span class="plate" id="pl">${esc((d.pre||'---')+' - '+(d.num||'000'))}</span></div></div>
+    <div class="card"><div class="sec" style="margin-top:0">GPS LOCATION (LOADING POINT)</div><div id="gps">${gpsHTML(d.gps)}</div><button class="btn btn-ghost btn-sm btn-block" style="margin-top:10px" onclick="getGPS()">REFRESH GPS</button></div>`,
     `<button class="btn btn-ghost" onclick="grab();ui.step=2;dispatch()">‹ BACK</button><button class="btn btn-primary" onclick="next3()">REVIEW ›</button>`);
+    if(!d.gps)getGPS();
   }else{
     shell(`<div class="step">STEP 4 — REVIEW &amp; SUBMIT</div><div class="card">${kv(prev())}</div>`,
     `<button class="btn btn-ghost" onclick="ui.step=3;dispatch()">‹ BACK</button><button class="btn btn-primary" onclick="confirmSub()">SUBMIT DISPATCH</button>`);
   }
 }
+const gpsHTML=(g,msg)=>g?`<div class="flag ok">✓ Location captured</div><div class="kv"><span>Latitude</span><b>${g.lat}</b></div><div class="kv"><span>Longitude</span><b>${g.lng}</b></div><div class="kv"><span>Accuracy</span><b>± ${g.acc} m</b></div>`:(msg||'<div class="sub" style="margin:0">Getting location…</div>');
+function getGPS(){
+  const el=()=>$('gps'),bad=m=>{if(el())el().innerHTML=`<div class="flag bad" style="margin:0">⚠ ${esc(m)} Turn on location access and tap REFRESH GPS.</div>`;};
+  if(el())el().innerHTML=gpsHTML(null);
+  if(!navigator.geolocation)return bad('GPS is not available on this device.');
+  navigator.geolocation.getCurrentPosition(p=>{ui.d.gps={lat:+p.coords.latitude.toFixed(6),lng:+p.coords.longitude.toFixed(6),acc:Math.round(p.coords.accuracy),t:Date.now()};if(el())el().innerHTML=gpsHTML(ui.d.gps);},
+    e=>bad('Could not get GPS location ('+(e.message||'denied')+').'),{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+}
 const plate=()=>{$('pl').textContent=(($('pre').value||'---').toUpperCase())+' - '+($('num').value||'000');};
-function prev(){const d=ui.d;return{id:ui.id||(ui.id='DSP-'+new Date().toISOString().slice(2,10).replace(/-/g,'')+'-'+Math.floor(1000+Math.random()*9000)),t:ui.t||(ui.t=Date.now()),district:d.district||S.me.district,chiefdom:d.chiefdom,phu:d.phu,dual:+d.dual||0,std:+d.std||0,plate:d.pre+' - '+d.num,conv:S.me.name,perBale:+d.perBale||0,expected:+d.expected||0,bales:(d.bales||[]).slice(),container:d.container,pieces:(d.bales||[]).length*(+d.perBale||0),total:(+d.dual||0)||(+d.expected||0)*(+d.perBale||0)};}
-const kv=r=>[['Dispatch ID',r.id],['Date & Time',fmt(r.t)],['Destination',r.district+' › '+r.chiefdom+' › '+r.phu],r.container&&['Container',r.container],r.perBale&&['ITNs per Bale',r.perBale],r.bales&&['Bales Scanned',r.bales.length],r.expected&&['Expected Bales',r.expected],r.pieces&&['Total ITN Pieces (scanned)',r.pieces],r.dual&&['Dual-AI ITNs',r.dual],r.std&&['Standard ITNs',r.std],r.total&&['TOTAL ITNs (Pieces)',nf(r.total)],['Vehicle Plate',r.plate],['Conveyor',r.conv]].filter(Boolean).map(x=>`<div class="kv"><span>${x[0]}</span><b>${esc(x[1])}</b></div>`).join('');
+function prev(){const d=ui.d;return{id:ui.id||(ui.id='DSP-'+new Date().toISOString().slice(2,10).replace(/-/g,'')+'-'+Math.floor(1000+Math.random()*9000)),t:ui.t||(ui.t=Date.now()),district:d.district||S.me.district,chiefdom:d.chiefdom,phu:d.phu,dual:+d.dual||0,std:+d.std||0,plate:d.pre+' - '+d.num,conv:S.me.name,perBale:+d.perBale||0,expected:+d.expected||0,bales:(d.bales||[]).slice(),container:d.container,pieces:(d.bales||[]).length*(+d.perBale||0),total:(+d.dual||0)||(+d.expected||0)*(+d.perBale||0),gps:d.gps||null};}
+const kv=r=>[['Dispatch ID',r.id],['Date & Time',fmt(r.t)],['Destination',r.district+' › '+r.chiefdom+' › '+r.phu],r.container&&['Container',r.container],r.perBale&&['ITNs per Bale',r.perBale],r.bales&&['Bales Scanned',r.bales.length],r.expected&&['Expected Bales',r.expected],r.pieces&&['Total ITN Pieces (scanned)',r.pieces],r.dual&&['Dual-AI ITNs',r.dual],r.std&&['Standard ITNs',r.std],r.total&&['TOTAL ITNs (Pieces)',nf(r.total)],['Vehicle Plate',r.plate],r.gps&&['GPS',r.gps.lat+', '+r.gps.lng+' (± '+r.gps.acc+' m)'],['Conveyor',r.conv]].filter(Boolean).map(x=>`<div class="kv"><span>${x[0]}</span><b>${esc(x[1])}</b></div>`).join('');
 function next1(){grab();const d=ui.d;if(!d.district||!d.chiefdom||!d.phu)return toast('Select district, chiefdom and PHU');if(!(+d.perBale>0))return toast('Enter ITNs per bale');if(!(+d.dual>0))return toast('Enter Dual-AI ITNs');if(+d.expected>0&&+d.dual!==+d.expected*+d.perBale)return toast('Dual-AI ITNs must equal '+nf(+d.expected*+d.perBale));
   if(!d.bales)d.bales=[];if(!d.container)d.container='CONT-'+new Date().getFullYear()+'-'+String(S.disp.length+1).padStart(3,'0');ui.step=2;dispatch();}
-function next2(){if(!(ui.d.bales||[]).length)return toast('Scan at least one bale');ui.step=3;dispatch();}
-function next3(){grab();const d=ui.d;if(!d.pre||!d.num)return toast('Enter the plate prefix and number');ui.step=4;ui.id=ui.t=null;dispatch();}
+function next2(){
+  const n=(ui.d.bales||[]).length,ex=+ui.d.expected||0;
+  if(!n)return toast('Scan at least one bale');
+  if(ex>0&&n<ex)return modal(`<h3>INCOMPLETE SCAN</h3><p>You scanned <b>${n}</b> of <b>${ex}</b> expected bales. Scan the remaining <b>${ex-n}</b> bale${ex-n===1?'':'s'} before continuing.</p><div class="acts"><button class="btn btn-primary" onclick="closeModal()">OK</button></div>`);
+  ui.step=3;dispatch();
+}
+function next3(){grab();const d=ui.d;if(!d.pre||!d.num)return toast('Enter the plate prefix and number');if(!d.gps)return toast('GPS location is required. Tap REFRESH GPS.');ui.step=4;ui.id=ui.t=null;dispatch();}
 let blast='';
 const nf=n=>Number(n).toLocaleString('en-US');
 function totHTML(per,ex,du){
@@ -379,18 +393,23 @@ function updTot(src){
   if(src&&per>0&&ex>0&&$('dual'))$('dual').value=per*ex;
   const t=$('tot');if(t)t.innerHTML=totHTML(per,ex,v('dual'));
 }
+function bWarn(m,ok){const w=$('bwarn');if(!w)return;w.className='flag '+(ok?'ok':'bad');w.style.display='block';w.textContent=m;}
 function addBale(id){
-  const d=ui.d;id=String(id||'').trim().slice(0,60);if(!id)return toast('Enter a bale ID');
-  if(d.bales.includes(id))return toast('Bale already scanned');
-  d.bales.push(id);const per=+d.perBale||0,c=$('bcnt');if(c)c.textContent=d.bales.length+' bales · '+d.bales.length*per+' ITNs';
-  const i=$('bid');if(i)i.value='';toast('Bale added');
+  const d=ui.d,ex=+d.expected||0;id=String(id||'').trim().slice(0,60);if(!id)return bWarn('Enter a bale ID')||toast('Enter a bale ID');
+  if(ex>0&&d.bales.length>=ex){bWarn('⚠ Expected bales ('+ex+') already reached. You cannot scan or add more.');return toast('Expected bales already reached');}
+  if(d.bales.includes(id)){bWarn('⚠ Bale '+id+' was already scanned.');return toast('Bale already scanned');}
+  d.bales.push(id);const per=+d.perBale||0,n=d.bales.length,c=$('bcnt');
+  if(c)c.textContent=n+(ex?' of '+ex:'')+' bales · '+n*per+' ITNs';
+  const i=$('bid');if(i)i.value='';
+  if(ex>0&&n===ex){stopScan();bWarn('✓ All '+ex+' expected bales scanned.',1);toast('All expected bales scanned');}
+  else{bWarn('✓ Bale added'+(ex?' — '+(ex-n)+' more to go':''),1);toast('Bale added');}
 }
 function rmBale(i){ui.d.bales.splice(i,1);dispatch();}
 function openBale(){
-  const d=ui.d,per=+d.perBale||0,n=d.bales.length;blast='';
+  const d=ui.d,per=+d.perBale||0,n=d.bales.length;blast='';if(+d.expected>0&&n>=+d.expected)return toast('Expected bales already reached');
   modal(`<h3>SCAN BALE QR CODE</h3><p id="bmsg">Hold the bale's QR code in front of the camera. Each scan adds 1 bale (${per} ITNs).</p>
   <div class="vf" style="width:200px;height:200px"><video id="bv" playsinline muted></video></div><canvas id="bc" style="display:none"></canvas>
-  <div id="bcnt" style="text-align:center;font:700 16px var(--body);color:var(--teal);margin-bottom:12px">${n} bales · ${n*per} ITNs</div>
+  <div id="bcnt" style="text-align:center;font:700 16px var(--body);color:var(--teal);margin-bottom:10px">${n}${+d.expected?' of '+(+d.expected):''} bales · ${n*per} ITNs</div><div id="bwarn" class="flag" style="display:none;margin-bottom:10px"></div>
   <div class="lbl" style="font:700 12px var(--body);letter-spacing:.06em;color:var(--muted)">OR ENTER BALE ID MANUALLY</div>
   <div class="field"><input id="bid" placeholder="E.G. BALE-001" autocapitalize="characters" style="text-transform:uppercase"></div>
   <button class="btn btn-primary btn-block" onclick="addBale($('bid').value)">ADD BALE</button>
