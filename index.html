@@ -119,6 +119,10 @@ body{font-family:var(--body);color:var(--text);background:#d9dde0;height:100%;ov
 .wl-sheet p{font:400 14.5px/1.55 var(--text);color:var(--text)}.wl-sheet p b{color:var(--teal)}
 .wl-act{display:flex;gap:10px;margin:18px 0 6px}.wl-act .btn{flex:1}.wl-act .btn-ghost{color:var(--teal);border-color:var(--line)}.wl-act .btn-primary{flex:1.4}
 .wl-ft{text-align:center;white-space:nowrap;overflow:hidden;font:400 10px/1.4 var(--body);color:var(--muted);padding:10px 6px calc(14px + env(safe-area-inset-bottom))}
+.appbar{min-height:50px!important;padding:6px 60px 4px 14px!important}
+.appbar .titles{padding-left:0!important}
+.appbar .title{font:500 13px/1 var(--body)!important;letter-spacing:.08em;color:rgba(255,255,255,.75);margin:0!important}
+.profile{flex:0 0 auto;background:var(--teal);color:#fff;font:500 16px/1.3 var(--body);white-space:nowrap;overflow:hidden;padding:0 44px 10px 14px}
 </style>
 </head>
 <body>
@@ -130,9 +134,10 @@ body{font-family:var(--body);color:var(--text);background:#d9dde0;height:100%;ov
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
 const KEY='itn_movement_v2';
+const DISTRICTS=['Bo','Bombali','Bonthe','Falaba','Kailahun','Kambia','Karene','Kenema','Koinadugu','Kono','Moyamba','Port Loko','Pujehun','Tonkolili','Western Area Rural','Western Area Urban'];
 const GEO={Bo:{'Kakua':['Kakua CHC','Njala Road CHP'],'Bo Town':['Bo Govt Hospital','Mattru Jong CHC'],'Badjia':['Badjia CHC','Gerihun CHC']},
  Kenema:{'Nongowa':['Kenema Govt Hospital','Hangha CHC'],'Dama':['Dama CHC']},
- Makeni:{'Bombali Sebora':['Rogbaneh CHC','Makeni Govt Hospital']}};
+ Bombali:{'Bombali Sebora':['Rogbaneh CHC','Makeni Govt Hospital']}};
 let S={me:null,disp:[]};
 try{const r=localStorage.getItem(KEY);if(r)S=JSON.parse(r);}catch(e){}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
@@ -166,9 +171,11 @@ function dlPDF(id){const r=S.disp.find(x=>x.id===id);
 /* shell */
 function shell(inner,foot){
   const m=S.me,tabs=[['dash','DASHBOARD'],['disp','DISPATCH'],['rec','RECORDS'],['sync','SYNC']];
-  app.innerHTML=`<div class="appbar"><div class="titles"><div class="eyebrow">ITN MOVEMENT</div><div class="title">${esc(m.name)} - ${esc(m.role)} - ${esc(m.district)}</div></div><button class="ico-btn" title="Sign out" onclick="signOut()"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42A6.92 6.92 0 0119 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.27 1.08-4.28 2.76-5.56L6.34 5.02A8.95 8.95 0 003 12a9 9 0 0018 0c0-2.74-1.23-5.19-3.17-6.83z"/></svg></button></div>
+  app.innerHTML=`<div class="appbar"><div class="titles"><div class="title">ITN MOVEMENT</div></div><button class="ico-btn" title="Sign out" onclick="signOut()"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42A6.92 6.92 0 0119 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.27 1.08-4.28 2.76-5.56L6.34 5.02A8.95 8.95 0 003 12a9 9 0 0018 0c0-2.74-1.23-5.19-3.17-6.83z"/></svg></button></div>
+  <div class="profile" id="pf">${esc(m.name)} - ${esc(m.role)} - ${esc(m.district)}</div>
   <div class="tabs">${tabs.map(t=>`<button class="tab ${ui.tab===t[0]?'on':''}" onclick="go('${t[0]}')">${t[1]}${t[0]==='sync'&&pend()?`<span class="badge">${pend()}</span>`:''}</button>`).join('')}</div>
   <div class="body" id="bd"><div class="list">${inner}</div></div>${foot?`<div class="footer">${foot}</div>`:''}${VER}`;
+  const pf=$('pf');let z=16;pf.style.fontSize=z+'px';while(pf.scrollWidth>pf.clientWidth&&z>8){z-=.5;pf.style.fontSize=z+'px';}
 }
 function go(t){ui.tab=t;ui.rec=null;ui.fresh=false;if(t==='disp'){ui.step=1;ui.d={};}render();}
 function render(){
@@ -239,15 +246,18 @@ function dash(){
 function openRec(id){ui.rec=id;ui.fresh=false;render();}
 /* dispatch */
 function grab(){const g=id=>$(id)?$(id).value:undefined,d=ui.d;
-  if(ui.step===1){d.chiefdom=g('chf');d.phu=g('phu');d.dual=g('dual');d.std=g('std');}
+  if(ui.step===1){d.district=g('dist');d.chiefdom=g('chf');d.phu=g('phu');d.dual=g('dual');d.std=g('std');}
   if(ui.step===2){d.pre=(g('pre')||'').toUpperCase();d.num=g('num');}}
 function dispatch(){
   const d=ui.d;
-  if(ui.step===1){const ch=Object.keys(GEO[S.me.district]||{});
+  if(ui.step===1){
+    d.district=d.district||S.me.district;
+    const dl=[...new Set([...DISTRICTS,S.me.district])],G=GEO[d.district]||{},ch=Object.keys(G),ph=G[d.chiefdom]||[];
+    const opt=(a,v,e)=>`<option value="">${a.length?'Select…':e}</option>`+a.map(c=>`<option ${v===c?'selected':''}>${esc(c)}</option>`).join('');
     shell(`<div class="step">STEP 1 — DESTINATION</div><div class="card">
-    <div class="field"><div class="lbl">District</div><input readonly value="${esc(S.me.district)}"></div>
-    ${GEO[S.me.district]?'':`<div class="field"><div class="lbl">Chiefdom <span class="req">*</span></div><input id="chf" value="${esc(d.chiefdom||'')}"></div><div class="field"><div class="lbl">Health Facility / PHU <span class="req">*</span></div><input id="phu" value="${esc(d.phu||'')}"></div>`}${GEO[S.me.district]?`<div class="field"><div class="lbl">Chiefdom <span class="req">*</span></div><select id="chf" onchange="grab();ui.d.phu='';dispatch()"><option value="">Select…</option>${ch.map(c=>`<option ${d.chiefdom===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
-    <div class="field"><div class="lbl">Health Facility / PHU <span class="req">*</span></div><select id="phu"><option value="">Select…</option>${((GEO[S.me.district]||{})[d.chiefdom]||[]).map(c=>`<option ${d.phu===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>`:''}</div>
+    <div class="field"><div class="lbl">District <span class="req">*</span></div><select id="dist" onchange="grab();ui.d.chiefdom='';ui.d.phu='';dispatch()">${opt(dl,d.district)}</select></div>
+    <div class="field"><div class="lbl">Chiefdom <span class="req">*</span></div><select id="chf" onchange="grab();ui.d.phu='';dispatch()">${opt(ch,d.chiefdom,'No chiefdoms configured')}</select></div>
+    <div class="field"><div class="lbl">Health Facility / PHU <span class="req">*</span></div><select id="phu">${opt(ph,d.phu,'Select chiefdom first')}</select></div></div>
     <div class="sec">ITN QUANTITIES</div><div class="card"><div class="field"><div class="lbl">DUAL-AI ITNS</div><input id="dual" type="number" inputmode="numeric" min="0" placeholder="e.g. 500" value="${esc(d.dual??'')}"></div>
     <div class="field"><div class="lbl">STANDARD ITNS</div><input id="std" type="number" inputmode="numeric" min="0" placeholder="e.g. 500" value="${esc(d.std??'')}"></div></div>`,
     `<button class="btn btn-primary" onclick="next1()">NEXT — VEHICLE DETAILS ›</button>`);
@@ -260,9 +270,9 @@ function dispatch(){
   }
 }
 const plate=()=>{$('pl').textContent=(($('pre').value||'---').toUpperCase())+' - '+($('num').value||'000');};
-function prev(){const d=ui.d;return{id:ui.id||(ui.id='DSP-'+new Date().toISOString().slice(2,10).replace(/-/g,'')+'-'+Math.floor(1000+Math.random()*9000)),t:ui.t||(ui.t=Date.now()),district:S.me.district,chiefdom:d.chiefdom,phu:d.phu,dual:+d.dual||0,std:+d.std||0,plate:d.pre+' - '+d.num,conv:S.me.name+' ('+S.me.role+')'};}
+function prev(){const d=ui.d;return{id:ui.id||(ui.id='DSP-'+new Date().toISOString().slice(2,10).replace(/-/g,'')+'-'+Math.floor(1000+Math.random()*9000)),t:ui.t||(ui.t=Date.now()),district:d.district||S.me.district,chiefdom:d.chiefdom,phu:d.phu,dual:+d.dual||0,std:+d.std||0,plate:d.pre+' - '+d.num,conv:S.me.name};}
 const kv=r=>[['Dispatch ID',r.id],['Date & Time',fmt(r.t)],['Destination',r.district+' › '+r.chiefdom+' › '+r.phu],['Dual-AI ITNs',r.dual],['Standard ITNs',r.std],['Vehicle Plate',r.plate],['Conveyor',r.conv]].map(x=>`<div class="kv"><span>${x[0]}</span><b>${esc(x[1])}</b></div>`).join('');
-function next1(){grab();const d=ui.d;if(!d.chiefdom||!d.phu)return toast('Select chiefdom and PHU');if(!(+d.dual>0||+d.std>0))return toast('Enter ITN quantities');ui.step=2;dispatch();}
+function next1(){grab();const d=ui.d;if(!d.district||!d.chiefdom||!d.phu)return toast('Select district, chiefdom and PHU');if(!(+d.dual>0||+d.std>0))return toast('Enter ITN quantities');ui.step=2;dispatch();}
 function next2(){grab();const d=ui.d;if(!d.pre||!d.num)return toast('Enter the plate prefix and number');ui.step=3;ui.id=ui.t=null;dispatch();}
 function confirmSub(){modal(`<h3>CONFIRM SUBMISSION</h3><p>Submit this dispatch of <b>${(+ui.d.dual||0)+(+ui.d.std||0)}</b> ITNs to <b>${esc(ui.d.phu)}</b>? It cannot be edited afterwards.</p><div class="acts"><button class="btn btn-ghost" onclick="closeModal()">CANCEL</button><button class="btn btn-primary" onclick="submitD()">YES, SUBMIT ✓</button></div>`);}
 function submitD(){
