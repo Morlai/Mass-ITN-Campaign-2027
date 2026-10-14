@@ -77,7 +77,7 @@ body{font-family:var(--body);color:var(--text);background:#d9dde0;height:100%;ov
 .sheet .acts{display:flex;gap:10px;margin-top:16px}.sheet .acts .btn{flex:1}
 .toast{position:absolute;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);background:#323232;color:#fff;font:400 14px var(--body);padding:12px 18px;border-radius:4px;opacity:0;pointer-events:none;transition:.25s;z-index:90}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.app-ver{flex:0 0 auto;text-align:center;white-space:nowrap;overflow:hidden;font:400 10px/1.4 var(--body);color:var(--muted);padding:12px 6px calc(14px + env(safe-area-inset-bottom));background:var(--grey)}
+.app-ver{flex:0 0 auto;text-align:center;white-space:nowrap;overflow:hidden;font:500 12.5px/1.4 var(--body);color:var(--ink);background:#fff;border-top:1px solid var(--line);padding:11px 8px calc(12px + env(safe-area-inset-bottom))}
 .ver{text-align:center;font:400 11px/1.4 var(--body);color:var(--muted);margin-top:14px}
 .uat{position:absolute;top:0;right:0;width:84px;height:84px;overflow:hidden;pointer-events:none;z-index:95}
 .uat span{position:absolute;top:17px;right:-30px;width:120px;transform:rotate(45deg);background:#4caf50;color:#fff;font:700 11px/1 var(--body);letter-spacing:.06em;text-align:center;padding:5px 0}
@@ -118,7 +118,7 @@ body{font-family:var(--body);color:var(--text);background:#d9dde0;height:100%;ov
 .wl-sheet::before{content:"";display:block;width:38px;height:4px;border-radius:4px;background:var(--line);margin:-10px auto 14px}
 .wl-sheet p{font:400 14.5px/1.55 var(--text);color:var(--text)}.wl-sheet p b{color:var(--teal)}
 .wl-act{display:flex;gap:10px;margin:18px 0 6px}.wl-act .btn{flex:1}.wl-act .btn-ghost{color:var(--teal);border-color:var(--line)}.wl-act .btn-primary{flex:1.4}
-.wl-ft{text-align:center;white-space:nowrap;overflow:hidden;font:400 10px/1.4 var(--body);color:var(--muted);padding:10px 6px calc(14px + env(safe-area-inset-bottom))}
+.wl-ft{text-align:center;white-space:nowrap;overflow:hidden;font:500 12px/1.4 var(--body);color:var(--text);padding:10px 6px calc(14px + env(safe-area-inset-bottom))}
 .appbar{min-height:50px!important;padding:6px 60px 4px 14px!important}
 .appbar .titles{padding-left:0!important}
 .appbar .title{font:500 13px/1 var(--body)!important;letter-spacing:.08em;color:rgba(255,255,255,.75);margin:0!important}
@@ -144,7 +144,7 @@ const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
 let ui={tab:'dash',step:1,d:{},rec:null,off:false,fresh:false};
 const $=id=>document.getElementById(id),app=$('app');
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const VER='<div class="app-ver">Version 1.0 · Powered by DIGIT HCM &amp; ICF-SL</div>';
+const VER='<div class="app-ver">Powered by DIGIT HCM &amp; ICF-SL &nbsp;Version 1.0</div>';
 const fmt=t=>new Date(t).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
 const qty=r=>r.dual+r.std,pend=()=>S.disp.filter(r=>!r.synced).length;
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2200);}
@@ -172,7 +172,7 @@ function dlPDF(id){const r=S.disp.find(x=>x.id===id);
 function shell(inner,foot){
   const m=S.me,tabs=[['dash','DASHBOARD'],['disp','DISPATCH'],['rec','RECORDS'],['sync','SYNC']];
   app.innerHTML=`<div class="appbar"><div class="titles"><div class="title">ITN MOVEMENT</div></div><button class="ico-btn" title="Sign out" onclick="signOut()"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg></button></div>
-  <div class="profile" id="pf">Name: ${esc(m.name)} - Role: ${esc(m.role)} - District: ${esc(m.district)}</div>
+  <div class="profile" id="pf">${esc(m.name)} - ${esc(m.role)} - ${esc(m.district)}</div>
   <div class="tabs">${tabs.map(t=>`<button class="tab ${ui.tab===t[0]?'on':''}" onclick="go('${t[0]}')">${t[1]}${t[0]==='sync'&&pend()?`<span class="badge">${pend()}</span>`:''}</button>`).join('')}</div>
   <div class="body" id="bd"><div class="list">${inner}</div></div>${foot?`<div class="footer">${foot}</div>`:''}${VER}`;
   const pf=$('pf');let z=15;pf.style.fontSize=z+'px';while(pf.scrollWidth>pf.clientWidth&&z>6){z-=.25;pf.style.fontSize=z+'px';}
@@ -190,7 +190,7 @@ function welcome(){
   <div class="wl-steps"><span><b>1</b>Sign in</span><span><b>2</b>Dispatch</span><span><b>3</b>PHU scans</span></div></div>
   <div class="wl-sheet"><p><b>Welcome!</b> Sign in with your staff QR ID card. Record bales received at the DMS, then dispatch ITNs from the DMS to health facilities. The PHU scans your receipt QR to receive the nets.</p>
   <div class="wl-act"><button class="btn btn-ghost" onclick="ui.seen=1;render()">Skip</button><button class="btn btn-primary" onclick="ui.seen=1;render()">Start</button></div>
-  <div class="wl-ft">National Malaria Control Programme · Version 1.0</div></div></div>`;
+  <div class="wl-ft">Powered by DIGIT HCM & ICF-SL · Version 1.0</div></div></div>`;
 }
 /* login */
 function login(){
@@ -216,11 +216,11 @@ function onCode(t){
   if(!c){if(t!==bad){bad=t;toast('Unrecognised ID card');}return false;}
   stopScan();pendingCard=c;
   const row=(k,v)=>`<div class="kv"><span>${k}</span><b>${esc(v||'—')}</b></div>`;
-  modal(`<h3>QR code scanned</h3><p>Check the details read from the ID card.</p>
-  <div class="card" style="box-shadow:none;border:1px solid var(--line);padding:6px 14px;margin-bottom:10px">${row('Name',c.name)}${row('ID',c.id)}${row('Role',c.role)}${row('District',c.district)}</div>
-  <div class="lbl" style="font-size:12.5px;color:var(--muted);margin-bottom:4px">QR CONTENT</div>
-  <div style="font:400 12px/1.45 monospace;background:var(--grey);border-radius:6px;padding:8px 10px;word-break:break-all;max-height:84px;overflow:auto">${esc(t)}</div>
-  <div class="acts"><button class="btn btn-ghost" onclick="scan()">SCAN AGAIN</button><button class="btn btn-primary" onclick="confirmLogin()">CONTINUE ›</button></div>`);
+  modal(`<div style="text-align:center"><h3 style="margin-bottom:2px">ITN MOVEMENT</h3><div style="font:500 13px var(--body);letter-spacing:.08em;color:var(--orange);margin-bottom:8px">DMS → PHU TRACKING</div><p style="margin-bottom:12px">Scan your staff QR CODE to sign in</p>
+  <button class="btn btn-ghost btn-block btn-sm" onclick="scan()">SCAN QR ID CARD</button></div>
+  <div class="banner" style="margin:14px 0 6px;text-align:center">✓ SCAN QR CODE VERIFIED</div>
+  <div class="card" style="box-shadow:none;border:1px solid var(--line);padding:6px 14px;margin-bottom:0">${row('FULL NAME',c.name)}${row('STAFF ID',c.id)}${row('ROLE',c.role)}${row('DISTRICT',c.district)}</div>
+  <div class="acts"><button class="btn btn-primary" onclick="confirmLogin()">CONTINUE ›</button></div>`);
   return true;
 }
 function confirmLogin(){
