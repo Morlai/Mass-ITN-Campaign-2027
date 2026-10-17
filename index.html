@@ -129,6 +129,9 @@ body{font-family:var(--body);color:var(--text);background:#d9dde0;height:100%;ov
 .pgh span{font:700 15px var(--disp);color:var(--teal)}
 .pg .s{font:400 12px var(--body);color:var(--muted);margin-top:3px}
 .sub1{padding-left:14px;background:#fafafa}.sub2{padding-left:30px;cursor:default;background:#fafafa}
+.sechd{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px;cursor:pointer;font:700 13px var(--body);letter-spacing:.06em;color:var(--teal)}
+.sechd .s{font:400 12px var(--body);letter-spacing:0;color:var(--muted);margin-top:3px}
+.sechd>span{font-size:16px}
 </style>
 </head>
 <body>
@@ -292,10 +295,31 @@ function signOut(){modal(`<h3>Sign out?</h3><p>${pend()?`<b>${pend()}</b> record
 function dash(){
   const today=new Date().toDateString(),T=S.disp.filter(r=>new Date(r.t).toDateString()===today).length;
   shell(`<div class="stat-grid"><div class="stat"><div class="n">${S.disp.length}</div><div class="l">Total Dispatches</div></div><div class="stat"><div class="n g">${S.disp.reduce((a,r)=>a+qty(r),0)}</div><div class="l">Total ITNs</div></div><div class="stat"><div class="n">${T}</div><div class="l">Today</div></div><div class="stat"><div class="n w">${pend()}</div><div class="l">Pending Sync</div></div></div>
-  <div class="sec">DISPATCH RECEIPTS</div><div class="card"><div class="sub" style="margin:0 0 12px">Bales received at DMS for <b>${esc(S.me.district)}</b></div><div class="two"><div class="stat" style="box-shadow:none;background:var(--grey)"><div class="n">${S.disp.reduce((a,r)=>a+(r.bales?r.bales.length:0),0)}</div><div class="l">Bales Scanned</div></div><div class="stat" style="box-shadow:none;background:var(--grey)"><div class="n w">${S.disp.reduce((a,r)=>a+(r.pieces||0),0)}</div><div class="l">ITNs in Pieces</div></div></div></div>
-  <div class="sec">% PROGRESS BY DISTRICT, CHIEFDOM &amp; FACILITY</div><div class="card" id="prog" style="padding:4px 14px">${progHTML()}</div>
-  <div class="sec">RECENT DISPATCHES</div>${S.disp.length?S.disp.slice(0,5).map(r=>`<div class="card"><div class="kv"><span>${esc(r.id)}</span><span class="chip ${r.synced?'ok':'w'}">${r.synced?'Synced':'Pending'}</span></div><div class="s" style="font:400 13px var(--body);color:var(--muted);margin:6px 0 10px">${esc(r.phu)} · ${nf(qty(r))} ITNs · ${esc(r.plate)}${r.target?' · '+(r.complete?'COMPLETE ✓':'PARTIAL'):''}<br>${fmt(r.t)}</div><button class="btn btn-ghost btn-sm btn-block" onclick="openRec('${r.id}')">↓ RECEIPT</button></div>`).join(''):'<div class="card empty">No dispatches yet. Tap DISPATCH to create one.</div>'}`);
+  <div class="sec">DISPATCH RECEIPTS</div><div class="card" id="recv">${recvHTML()}</div>
+  <div class="card" id="sw-prog" style="padding:0">${blockHTML('prog')}</div>
+  <div class="card" id="sw-recent" style="padding:0">${blockHTML('recent')}</div>`);
 }
+const dn=x=>String(x).replace(/\s+District$/,'');
+function recvHTML(){
+  const dl=Object.keys(GEO).sort();
+  if(!ui.dd)ui.dd=dl.find(k=>nd(k)===nd(S.me.district))||dl[0]||S.me.district;
+  const L=S.disp.filter(r=>r.district===ui.dd),b=L.reduce((a,r)=>a+(r.bales?r.bales.length:0),0),p=L.reduce((a,r)=>a+(r.pieces||0),0);
+  return `<div class="field" style="margin-bottom:10px"><select onchange="ui.dd=this.value;$('recv').innerHTML=recvHTML()">${dl.map(k=>`<option value="${esc(k)}" ${k===ui.dd?'selected':''}>${esc(dn(k))}</option>`).join('')}</select></div>
+  <div class="sub" style="margin:0 0 12px">Bales Dispatch at DMS for <b>${esc(dn(ui.dd))}</b></div>
+  <div class="two"><div class="stat" style="box-shadow:none;background:var(--grey)"><div class="n">${nf(b)}</div><div class="l">Bales Scanned</div></div><div class="stat" style="box-shadow:none;background:var(--grey)"><div class="n w">${nf(p)}</div><div class="l">ITNs in Pieces</div></div></div>`;
+}
+function recCard(r){return `<div class="card" style="box-shadow:none;border:1px solid var(--line);margin:8px 0"><div class="kv"><span>${esc(r.id)}</span><span class="chip ${r.synced?'ok':'w'}">${r.synced?'Synced':'Pending'}</span></div><div class="s" style="font:400 13px var(--body);color:var(--muted);margin:6px 0 10px">${esc(r.phu)} · ${nf(qty(r))} ITNs · ${esc(r.plate)}${r.target?' · '+(r.complete?'COMPLETE ✓':'PARTIAL'):''}<br>${fmt(r.t)}</div><button class="btn btn-ghost btn-sm btn-block" onclick="openRec('${r.id}')">↓ RECEIPT</button></div>`;}
+function recentHTML(){
+  const O=ui.ro||(ui.ro={}),ds=[...new Set([...Object.keys(GEO),...S.disp.map(r=>r.district)])].filter(Boolean).sort();
+  return ds.map(d=>{const L=S.disp.filter(r=>r.district===d),k='r|'+d;
+    return `<div class="pg" data-k="${esc(k)}" onclick="tglR(this.dataset.k)"><div class="pgh"><b>${O[k]?'▾':'▸'} ${esc(dn(d))}</b><span>${L.length}</span></div><div class="s">${L.length?nf(L.reduce((a,r)=>a+qty(r),0))+' ITNs':'No dispatches'}</div></div>`+(O[k]?(L.length?L.map(recCard).join(''):'<div class="empty" style="padding:8px">No dispatches yet.</div>'):'');}).join('');
+}
+function tglR(k){ui.ro=ui.ro||{};ui.ro[k]=!ui.ro[k];const p=$('recent');if(p)p.innerHTML=recentHTML();}
+function blockHTML(k){
+  const o=!!(ui.sec&&ui.sec[k]),t=k==='prog'?['% PROGRESS BY DISTRICT, CHIEFDOM &amp; FACILITY',Object.keys(GEO).length+' districts']:['RECENT DISPATCHES',S.disp.length+' dispatch'+(S.disp.length===1?'':'es')];
+  return `<div class="sechd" onclick="tglSec('${k}')"><div>${t[0]}<div class="s">${t[1]}</div></div><span>${o?'▾':'▸'}</span></div>${o?`<div id="${k}" style="padding:0 14px 6px">${k==='prog'?progHTML():recentHTML()}</div>`:''}`;
+}
+function tglSec(k){ui.sec=ui.sec||{};ui.sec[k]=!ui.sec[k];const w=$('sw-'+k);if(w)w.innerHTML=blockHTML(k);}
 const pct=(a,b)=>b?Math.min(100,Math.round(a/b*100)):0;
 const pbar=p=>`<div class="ring-track" style="margin:7px 0 0"><div class="ring-fill ${p>=100?'full':''}" style="width:${p}%"></div></div>`;
 function progHTML(){
