@@ -296,8 +296,8 @@ function dash(){
   const today=new Date().toDateString(),T=S.disp.filter(r=>new Date(r.t).toDateString()===today).length;
   shell(`<div class="stat-grid"><div class="stat"><div class="n">${S.disp.length}</div><div class="l">Total Dispatches</div></div><div class="stat"><div class="n g">${S.disp.reduce((a,r)=>a+qty(r),0)}</div><div class="l">Total ITNs</div></div><div class="stat"><div class="n">${T}</div><div class="l">Today</div></div><div class="stat"><div class="n w">${pend()}</div><div class="l">Pending Sync</div></div></div>
   <div class="sec">DISPATCH RECEIPTS</div><div class="card" id="recv">${recvHTML()}</div>
-  <div class="card" id="sw-prog" style="padding:0">${blockHTML('prog')}</div>
-  <div class="card" id="sw-recent" style="padding:0">${blockHTML('recent')}</div>`);
+  <div class="card">${secSel('prog')}<div id="prog">${progHTML()}</div></div>
+  <div class="card">${secSel('recent')}<div id="recent">${recentHTML()}</div></div>`);
 }
 const dn=x=>String(x).replace(/\s+District$/,'');
 function recvHTML(){
@@ -308,30 +308,31 @@ function recvHTML(){
   <div class="sub" style="margin:0 0 12px">Bales Dispatch at DMS for <b>${esc(dn(ui.dd))}</b></div>
   <div class="two"><div class="stat" style="box-shadow:none;background:var(--grey)"><div class="n">${nf(b)}</div><div class="l">Bales Scanned</div></div><div class="stat" style="box-shadow:none;background:var(--grey)"><div class="n w">${nf(p)}</div><div class="l">ITNs in Pieces</div></div></div>`;
 }
-function recCard(r){return `<div class="card" style="box-shadow:none;border:1px solid var(--line);margin:8px 0"><div class="kv"><span>${esc(r.id)}</span><span class="chip ${r.synced?'ok':'w'}">${r.synced?'Synced':'Pending'}</span></div><div class="s" style="font:400 13px var(--body);color:var(--muted);margin:6px 0 10px">${esc(r.phu)} · ${nf(qty(r))} ITNs · ${esc(r.plate)}${r.target?' · '+(r.complete?'COMPLETE ✓':'PARTIAL'):''}<br>${fmt(r.t)}</div><button class="btn btn-ghost btn-sm btn-block" onclick="openRec('${r.id}')">↓ RECEIPT</button></div>`;}
+const dd0=()=>Object.keys(GEO).sort().find(k=>nd(k)===nd(S.me.district))||'*';
+function recCard(r){return `<div class="card" style="box-shadow:none;border:1px solid var(--line);margin:8px 0"><div class="kv"><span>${esc(r.id)}</span><span class="chip ${r.synced?'ok':'w'}">${r.synced?'Synced':'Pending'}</span></div><div class="s" style="font:400 13px var(--body);color:var(--muted);margin:6px 0 10px">${esc(dn(r.district))} › ${esc(r.phu)} · ${nf(qty(r))} ITNs · ${esc(r.plate)}${r.target?' · '+(r.complete?'COMPLETE ✓':'PARTIAL'):''}<br>${fmt(r.t)}</div><button class="btn btn-ghost btn-sm btn-block" onclick="openRec('${r.id}')">↓ RECEIPT</button></div>`;}
 function recentHTML(){
-  const O=ui.ro||(ui.ro={}),ds=[...new Set([...Object.keys(GEO),...S.disp.map(r=>r.district)])].filter(Boolean).sort();
-  return ds.map(d=>{const L=S.disp.filter(r=>r.district===d),k='r|'+d;
-    return `<div class="pg" data-k="${esc(k)}" onclick="tglR(this.dataset.k)"><div class="pgh"><b>${O[k]?'▾':'▸'} ${esc(dn(d))}</b><span>${L.length}</span></div><div class="s">${L.length?nf(L.reduce((a,r)=>a+qty(r),0))+' ITNs':'No dispatches'}</div></div>`+(O[k]?(L.length?L.map(recCard).join(''):'<div class="empty" style="padding:8px">No dispatches yet.</div>'):'');}).join('');
+  ui.rd=ui.rd||dd0();
+  const L=ui.rd==='*'?S.disp:S.disp.filter(r=>r.district===ui.rd);
+  return L.length?L.map(recCard).join(''):`<div class="empty" style="padding:8px">No dispatches yet${ui.rd==='*'?'':' for '+esc(dn(ui.rd))}.</div>`;
 }
-function tglR(k){ui.ro=ui.ro||{};ui.ro[k]=!ui.ro[k];const p=$('recent');if(p)p.innerHTML=recentHTML();}
-function blockHTML(k){
-  const o=!!(ui.sec&&ui.sec[k]),t=k==='prog'?['% PROGRESS BY DISTRICT, CHIEFDOM &amp; FACILITY',Object.keys(GEO).length+' districts']:['RECENT DISPATCHES',S.disp.length+' dispatch'+(S.disp.length===1?'':'es')];
-  return `<div class="sechd" onclick="tglSec('${k}')"><div>${t[0]}<div class="s">${t[1]}</div></div><span>${o?'▾':'▸'}</span></div>${o?`<div id="${k}" style="padding:0 14px 6px">${k==='prog'?progHTML():recentHTML()}</div>`:''}`;
+function secSel(k){
+  ui.pd=ui.pd||dd0();ui.rd=ui.rd||dd0();
+  const dl=Object.keys(GEO).sort(),cur=k==='prog'?ui.pd:ui.rd;
+  return `<div class="sec" style="margin-top:0">${k==='prog'?'% PROGRESS BY DISTRICT, CHIEFDOM &amp; FACILITY':'RECENT DISPATCHES'}</div><div class="field" style="margin-bottom:8px"><select onchange="selSec('${k}',this.value)"><option value="*" ${cur==='*'?'selected':''}>All Districts</option>${dl.map(d=>`<option value="${esc(d)}" ${d===cur?'selected':''}>${esc(dn(d))}</option>`).join('')}</select></div>`;
 }
-function tglSec(k){ui.sec=ui.sec||{};ui.sec[k]=!ui.sec[k];const w=$('sw-'+k);if(w)w.innerHTML=blockHTML(k);}
+function selSec(k,v){if(k==='prog'){ui.pd=v;$('prog').innerHTML=progHTML();}else{ui.rd=v;$('recent').innerHTML=recentHTML();}}
 const pct=(a,b)=>b?Math.min(100,Math.round(a/b*100)):0;
 const pbar=p=>`<div class="ring-track" style="margin:7px 0 0"><div class="ring-fill ${p>=100?'full':''}" style="width:${p}%"></div></div>`;
 function progHTML(){
-  const F={},O=ui.open||(ui.open={});
+  const F={},O=ui.open||(ui.open={});ui.pd=ui.pd||dd0();const only=ui.pd!=='*';
   S.disp.forEach(r=>{const k=r.district+'|'+r.chiefdom+'|'+r.phu,f=F[k]=F[k]||{s:0,t:0};f.s+=sentOf(r);if(!f.t)f.t=targetOf(r);});
   let h='';
-  Object.keys(GEO).sort().forEach(d=>{
+  (only?[ui.pd]:Object.keys(GEO).sort()).forEach(d=>{
     const cs=Object.keys(GEO[d]).sort();let tot=0,hit=0;
     cs.forEach(c=>GEO[d][c].forEach(p=>{tot++;if(F[d+'|'+c+'|'+p])hit++;}));
     const kd='d|'+d,p=pct(hit,tot);
-    h+=`<div class="pg" data-k="${esc(kd)}" onclick="tgl(this.dataset.k)"><div class="pgh"><b>${O[kd]?'▾':'▸'} ${esc(d)}</b><span>${p}%</span></div><div class="s">${hit} of ${tot} facilities reached</div>${pbar(p)}</div>`;
-    if(!O[kd])return;
+    h+=`<div class="pg" data-k="${esc(kd)}" onclick="tgl(this.dataset.k)"><div class="pgh"><b>${(only||O[kd])?'▾':'▸'} ${esc(dn(d))}</b><span>${p}%</span></div><div class="s">${hit} of ${tot} facilities reached</div>${pbar(p)}</div>`;
+    if(!(only||O[kd]))return;
     cs.forEach(c=>{
       const fl=GEO[d][c],ch=fl.filter(x=>F[d+'|'+c+'|'+x]).length,cp=pct(ch,fl.length),kc='c|'+d+'|'+c;
       h+=`<div class="pg sub1" data-k="${esc(kc)}" onclick="tgl(this.dataset.k)"><div class="pgh"><b>${O[kc]?'▾':'▸'} ${esc(c)}</b><span>${cp}%</span></div><div class="s">${ch} of ${fl.length} facilities reached</div>${pbar(cp)}</div>`;
