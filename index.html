@@ -184,7 +184,8 @@ const VER='<div class="app-ver">Powered by DIGIT HCM &amp; ICF-SL &nbsp;Version 
 const fmt=t=>new Date(t).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
 const sentOf=r=>r.pieces||r.total||0,targetOf=r=>r.target||r.total||0;
 function facStat(d,c,p){let sent=0,target=0,per=0;for(const r of S.disp){if(r.district===d&&r.chiefdom===c&&r.phu===p){sent+=sentOf(r);if(!target)target=targetOf(r);if(!per)per=r.perBale||0;}}return{sent,target,per,balance:Math.max(0,target-sent)};}
-const qty=r=>r.total||r.pieces||(r.dual+r.std),pend=()=>S.disp.filter(r=>!r.synced).length;
+const qty=r=>r.total||r.pieces||(r.dual+r.std),pend=()=>mine().filter(r=>!r.synced).length;
+const mine=()=>S.disp.filter(r=>S.me&&nd(r.district)===nd(S.me.district)),myD=()=>Object.keys(GEO).find(k=>S.me&&nd(k)===nd(S.me.district))||'';
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2200);}
 function modal(h){$('modal').innerHTML=`<div class="ovl"><div class="sheet">${h}</div></div>`;}
 const closeModal=()=>$('modal').innerHTML='';
@@ -293,74 +294,72 @@ function fileScan(inp){
 function signOut(){modal(`<h3>Sign out?</h3><p>${pend()?`<b>${pend()}</b> record(s) are still pending sync. `:''}Records stay saved on this phone.</p><div class="acts"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="closeModal();S.me=null;save();render()">Sign out</button></div>`);}
 /* dashboard */
 function dash(){
-  const today=new Date().toDateString(),T=S.disp.filter(r=>new Date(r.t).toDateString()===today).length;
-  shell(`<div class="stat-grid"><div class="stat"><div class="n">${S.disp.length}</div><div class="l">Total Dispatches</div></div><div class="stat"><div class="n g">${S.disp.reduce((a,r)=>a+qty(r),0)}</div><div class="l">Total ITNs</div></div><div class="stat"><div class="n">${T}</div><div class="l">Today</div></div><div class="stat"><div class="n w">${pend()}</div><div class="l">Pending Sync</div></div></div>
+  const M=mine(),today=new Date().toDateString(),T=M.filter(r=>new Date(r.t).toDateString()===today).length;
+  shell(`${myD()?'':`<div class="flag bad">Your district (${esc(S.me.district)}) was not found in the destination list.</div>`}${M.length?`<div class="stat-grid"><div class="stat"><div class="n">${M.length}</div><div class="l">Total Dispatches</div></div><div class="stat"><div class="n g">${nf(M.reduce((a,r)=>a+qty(r),0))}</div><div class="l">Total ITNs</div></div><div class="stat"><div class="n">${T}</div><div class="l">Today</div></div><div class="stat"><div class="n w">${pend()}</div><div class="l">Pending Sync</div></div></div>`:`<div class="card empty">No dispatch started for <b>${esc(dn(myD()||S.me.district))}</b> yet. Tap DISPATCH to begin.</div>`}
   <div class="sec">DISPATCH RECEIPTS</div><div class="card" id="recv">${recvHTML()}</div>
-  <div class="card">${secSel('prog')}<div id="prog">${progHTML()}</div></div>
-  <div class="card">${secSel('recent')}<div id="recent">${recentHTML()}</div></div>`);
+  <div class="card"><div id="sh-prog">${secSel('prog')}</div><div id="prog">${progHTML()}</div></div>
+  <div class="card"><div id="sh-recent">${secSel('recent')}</div><div id="recent">${recentHTML()}</div></div>`);
 }
+
 const dn=x=>String(x).replace(/\s+District$/,'');
 function recvHTML(){
-  const dl=Object.keys(GEO).sort();
-  if(!ui.dd)ui.dd=dl.find(k=>nd(k)===nd(S.me.district))||dl[0]||S.me.district;
-  const L=S.disp.filter(r=>r.district===ui.dd),b=L.reduce((a,r)=>a+(r.bales?r.bales.length:0),0),p=L.reduce((a,r)=>a+(r.pieces||0),0);
-  return `<div class="field" style="margin-bottom:10px"><select onchange="ui.dd=this.value;$('recv').innerHTML=recvHTML()">${dl.map(k=>`<option value="${esc(k)}" ${k===ui.dd?'selected':''}>${esc(dn(k))}</option>`).join('')}</select></div>
-  <div class="sub" style="margin:0 0 12px">Bales Dispatch at DMS for <b>${esc(dn(ui.dd))}</b></div>
+  const L=mine(),b=L.reduce((a,r)=>a+(r.bales?r.bales.length:0),0),p=L.reduce((a,r)=>a+(r.pieces||0),0);
+  return `<div class="sub" style="margin:0 0 12px">Bales Dispatch at DMS for <b>${esc(dn(myD()||S.me.district))}</b></div>
   <div class="two"><div class="stat" style="box-shadow:none;background:var(--grey)"><div class="n">${nf(b)}</div><div class="l">Bales Scanned</div></div><div class="stat" style="box-shadow:none;background:var(--grey)"><div class="n w">${nf(p)}</div><div class="l">ITNs in Pieces</div></div></div>`;
 }
-const dd0=()=>Object.keys(GEO).sort().find(k=>nd(k)===nd(S.me.district))||'*';
-function recCard(r){return `<div class="card" style="box-shadow:none;border:1px solid var(--line);margin:8px 0"><div class="kv"><span>${esc(r.id)}</span><span class="chip ${r.synced?'ok':'w'}">${r.synced?'Synced':'Pending'}</span></div><div class="s" style="font:400 13px var(--body);color:var(--muted);margin:6px 0 10px">${esc(dn(r.district))} › ${esc(r.phu)} · ${nf(qty(r))} ITNs · ${esc(r.plate)}${r.target?' · '+(r.complete?'COMPLETE ✓':'PARTIAL'):''}<br>${fmt(r.t)}</div><button class="btn btn-ghost btn-sm btn-block" onclick="openRec('${r.id}')">↓ RECEIPT</button></div>`;}
+function recCard(r){return `<div class="card" style="box-shadow:none;border:1px solid var(--line);margin:8px 0"><div class="kv"><span>${esc(r.id)}</span><span class="chip ${r.synced?'ok':'w'}">${r.synced?'Synced':'Pending'}</span></div><div class="s" style="font:400 13px var(--body);color:var(--muted);margin:6px 0 10px">${esc(r.chiefdom)} › ${esc(r.phu)} · ${nf(qty(r))} ITNs · ${esc(r.plate)}${r.target?' · '+(r.complete?'COMPLETE ✓':'PARTIAL'):''}<br>${fmt(r.t)}</div><button class="btn btn-ghost btn-sm btn-block" onclick="openRec('${r.id}')">↓ RECEIPT</button></div>`;}
+function flt(k){ui.f=ui.f||{};return ui.f[k]=ui.f[k]||{c:'*',f:'*'};}
 function recentHTML(){
-  ui.rd=ui.rd||dd0();
-  const L=ui.rd==='*'?S.disp:S.disp.filter(r=>r.district===ui.rd);
-  return L.length?L.map(recCard).join(''):`<div class="empty" style="padding:8px">No dispatches yet${ui.rd==='*'?'':' for '+esc(dn(ui.rd))}.</div>`;
+  const f=flt('recent');let L=mine();
+  if(f.c!=='*')L=L.filter(r=>r.chiefdom===f.c);
+  if(f.f!=='*')L=L.filter(r=>r.phu===f.f);
+  return L.length?L.map(recCard).join(''):'<div class="empty" style="padding:8px">No dispatches found.</div>';
 }
 function secSel(k){
-  ui.pd=ui.pd||dd0();ui.rd=ui.rd||dd0();
-  const dl=Object.keys(GEO).sort(),cur=k==='prog'?ui.pd:ui.rd;
-  return `<div class="sec" style="margin-top:0">${k==='prog'?'% PROGRESS BY DISTRICT, CHIEFDOM &amp; FACILITY':'RECENT DISPATCHES'}</div><div class="field" style="margin-bottom:8px"><select onchange="selSec('${k}',this.value)"><option value="*" ${cur==='*'?'selected':''}>All Districts</option>${dl.map(d=>`<option value="${esc(d)}" ${d===cur?'selected':''}>${esc(dn(d))}</option>`).join('')}</select></div>`;
+  const D=myD(),G=D?GEO[D]:{},cs=Object.keys(G).sort(),f=flt(k);
+  const fl=f.c==='*'?[...new Set(cs.flatMap(c=>G[c]))].sort():(G[f.c]||[]);
+  const o=(a,cur,all)=>`<option value="*" ${cur==='*'?'selected':''}>${all}</option>`+a.map(x=>`<option ${x===cur?'selected':''}>${esc(x)}</option>`).join('');
+  return `<div class="sec" style="margin-top:0">${k==='prog'?'% PROGRESS BY CHIEFDOM &amp; FACILITY':'RECENT DISPATCHES'} — ${esc(dn(D||S.me.district))}</div>
+  <div class="field" style="margin-bottom:8px"><select onchange="selSec('${k}','c',this.value)">${o(cs,f.c,'All Chiefdoms')}</select></div>
+  <div class="field" style="margin-bottom:8px"><select onchange="selSec('${k}','f',this.value)">${o(fl,f.f,'All Facilities')}</select></div>`;
 }
-function selSec(k,v){if(k==='prog'){ui.pd=v;$('prog').innerHTML=progHTML();}else{ui.rd=v;$('recent').innerHTML=recentHTML();}}
+function selSec(k,w,v){const f=flt(k);f[w]=v;if(w==='c')f.f='*';$('sh-'+k).innerHTML=secSel(k);$(k).innerHTML=k==='prog'?progHTML():recentHTML();}
 const pct=(a,b)=>b?Math.min(100,Math.round(a/b*100)):0;
 const pbar=p=>`<div class="ring-track" style="margin:7px 0 0"><div class="ring-fill ${p>=100?'full':''}" style="width:${p}%"></div></div>`;
 function progHTML(){
-  const F={},O=ui.open||(ui.open={});ui.pd=ui.pd||dd0();const only=ui.pd!=='*';
-  S.disp.forEach(r=>{const k=r.district+'|'+r.chiefdom+'|'+r.phu,f=F[k]=F[k]||{s:0,t:0};f.s+=sentOf(r);if(!f.t)f.t=targetOf(r);});
-  let h='';
-  (only?[ui.pd]:Object.keys(GEO).sort()).forEach(d=>{
-    const cs=Object.keys(GEO[d]).sort();let tot=0,hit=0;
-    cs.forEach(c=>GEO[d][c].forEach(p=>{tot++;if(F[d+'|'+c+'|'+p])hit++;}));
-    const kd='d|'+d,p=pct(hit,tot);
-    h+=`<div class="pg" data-k="${esc(kd)}" onclick="tgl(this.dataset.k)"><div class="pgh"><b>${(only||O[kd])?'▾':'▸'} ${esc(dn(d))}</b><span>${p}%</span></div><div class="s">${hit} of ${tot} facilities reached</div>${pbar(p)}</div>`;
-    if(!(only||O[kd]))return;
-    cs.forEach(c=>{
-      const fl=GEO[d][c],ch=fl.filter(x=>F[d+'|'+c+'|'+x]).length,cp=pct(ch,fl.length),kc='c|'+d+'|'+c;
-      h+=`<div class="pg sub1" data-k="${esc(kc)}" onclick="tgl(this.dataset.k)"><div class="pgh"><b>${O[kc]?'▾':'▸'} ${esc(c)}</b><span>${cp}%</span></div><div class="s">${ch} of ${fl.length} facilities reached</div>${pbar(cp)}</div>`;
-      if(!O[kc])return;
-      fl.forEach(x=>{const f=F[d+'|'+c+'|'+x],fp=f?(f.t?pct(f.s,f.t):100):0;
-        h+=`<div class="pg sub2"><div class="pgh"><span style="color:var(--ink);font:400 14px var(--body)">${esc(x)}</span><span>${fp}%</span></div><div class="s">${f?`${nf(f.s)} of ${nf(f.t)} ITNs${f.s>=f.t?' · COMPLETE ✓':' · balance '+nf(f.t-f.s)}`:'Not yet dispatched'}</div>${pbar(fp)}</div>`;});
-    });
+  const D=myD();if(!D)return '<div class="empty">No destination data loaded.</div>';
+  const F={},O=ui.open||(ui.open={}),f=flt('prog'),G=GEO[D],cs=Object.keys(G).sort();
+  mine().forEach(r=>{const k=r.district+'|'+r.chiefdom+'|'+r.phu,e=F[k]=F[k]||{s:0,t:0};e.s+=sentOf(r);if(!e.t)e.t=targetOf(r);});
+  let tot=0,hit=0;cs.forEach(c=>G[c].forEach(p=>{tot++;if(F[D+'|'+c+'|'+p])hit++;}));
+  const p0=pct(hit,tot);
+  let h=`<div class="pg" style="cursor:default"><div class="pgh"><b>${esc(dn(D))}</b><span>${p0}%</span></div><div class="s">${hit} of ${tot} facilities reached</div>${pbar(p0)}</div>`;
+  cs.filter(c=>f.c==='*'||c===f.c).forEach(c=>{
+    const fl=G[c];if(f.f!=='*'&&!fl.includes(f.f))return;
+    const ch=fl.filter(x=>F[D+'|'+c+'|'+x]).length,cp=pct(ch,fl.length),kc='c|'+D+'|'+c,open=O[kc]||f.c!=='*'||f.f!=='*';
+    h+=`<div class="pg sub1" data-k="${esc(kc)}" onclick="tgl(this.dataset.k)"><div class="pgh"><b>${open?'▾':'▸'} ${esc(c)}</b><span>${cp}%</span></div><div class="s">${ch} of ${fl.length} facilities reached</div>${pbar(cp)}</div>`;
+    if(!open)return;
+    fl.filter(x=>f.f==='*'||x===f.f).forEach(x=>{const e=F[D+'|'+c+'|'+x],fp=e?(e.t?pct(e.s,e.t):100):0;
+      h+=`<div class="pg sub2"><div class="pgh"><span style="color:var(--ink);font:400 14px var(--body)">${esc(x)}</span><span>${fp}%</span></div><div class="s">${e?`${nf(e.s)} of ${nf(e.t)} ITNs${e.s>=e.t?' · COMPLETE ✓':' · balance '+nf(e.t-e.s)}`:'Not yet dispatched'}</div>${pbar(fp)}</div>`;});
   });
-  return h||'<div class="empty">No destination data loaded.</div>';
+  return h;
 }
 function tgl(k){ui.open=ui.open||{};ui.open[k]=!ui.open[k];const p=$('prog');if(p)p.innerHTML=progHTML();}
 function openRec(id){ui.rec=id;ui.fresh=false;render();}
 /* dispatch */
 function grab(){const g=id=>$(id)?$(id).value:undefined,d=ui.d;
-  if(ui.step===1){d.district=g('dist');d.chiefdom=g('chf');d.phu=g('phu');d.perBale=g('perb');d.expected=g('exp');d.dual=g('dual');}
+  if(ui.step===1){d.chiefdom=g('chf');d.phu=g('phu');d.perBale=g('perb');d.expected=g('exp');d.dual=g('dual');}
   if(ui.step===3){d.pre=(g('pre')||'').toUpperCase();d.num=g('num');}}
 function dispatch(){
   const d=ui.d;
   if(ui.step===1){
-    const dl=Object.keys(GEO).sort();
-    if(!d.district)d.district=dl.find(k=>nd(k)===nd(S.me.district))||'';
+    const dl=myD()?[myD()]:[];d.district=myD()||'';
     const G=GEO[d.district]||{},ch=Object.keys(G).sort();
     if(!d.chiefdom&&ch.length===1)d.chiefdom=ch[0];
     const ph=G[d.chiefdom]||[];if(!d.phu&&ph.length===1)d.phu=ph[0];
     {const k=d.district+'|'+d.chiefdom+'|'+d.phu;if(d.ledKey!==k){d.ledKey=k;applyLedger();}}
     const opt=(a,v,e)=>`<option value="">${a.length?'Select…':e}</option>`+a.map(c=>`<option ${v===c?'selected':''}>${esc(c)}</option>`).join('');
     shell(`<div class="step">STEP 1 — DESTINATION</div>${dl.length?'':`<div class="flag bad">Destination list not loaded. Put <b>cascading_data.csv</b> in the same folder as this page, or choose it here.<br><label class="btn btn-ghost btn-sm" style="margin-top:10px;cursor:pointer">Choose cascading_data.csv<input type="file" accept=".csv,text/csv" hidden onchange="loadCsvFile(this)"></label></div>`}<div class="card">
-    <div class="field"><div class="lbl">District <span class="req">*</span></div><select id="dist" onchange="grab();ui.d.chiefdom='';ui.d.phu='';dispatch()">${opt(dl,d.district)}</select></div>
+    <div class="field"><div class="lbl">District <span class="req">*</span></div><select id="dist" disabled>${dl.map(x=>`<option value="${esc(x)}" selected>${esc(dn(x))}</option>`).join('')||'<option value="">Not found in destination list</option>'}</select><div class="sub" style="margin:6px 0 0">Fixed from your staff ID card.</div></div>
     <div class="field"><div class="lbl">Chiefdom <span class="req">*</span></div><select id="chf" onchange="grab();ui.d.phu='';dispatch()">${opt(ch,d.chiefdom,'No chiefdoms configured')}</select></div>
     <div class="field"><div class="lbl">Health Facility / PHU <span class="req">*</span></div><select id="phu" onchange="grab();dispatch()">${opt(ph,d.phu,'Select chiefdom first')}</select></div>
     <div class="field"><div class="lbl">ITNs Per Bale (Pieces) <span class="req">*</span></div><input id="perb" oninput="updTot(1)" type="number" inputmode="numeric" min="1" placeholder="e.g. 50" value="${esc(d.perBale??'')}"><div class="sub" style="margin:6px 0 0">Number of ITN pieces inside each bale</div></div>
@@ -482,7 +481,7 @@ function receipt(){
 }
 /* records */
 function records(){
-  shell(`<div class="sec">ALL DISPATCHES</div>${S.disp.length?`<div class="card">${S.disp.map(r=>`<div class="row" onclick="openRec('${r.id}')" style="cursor:pointer"><span class="sm"><div class="t">${esc(r.id)}</div><div class="s">${esc(r.phu)} · ${fmt(r.t)}</div></span><span class="q">${qty(r)}</span></div>`).join('')}</div>`:'<div class="card empty">No records yet.</div>'}`);
+  shell(`<div class="sec">ALL DISPATCHES</div>${mine().length?`<div class="card">${mine().map(r=>`<div class="row" onclick="openRec('${r.id}')" style="cursor:pointer"><span class="sm"><div class="t">${esc(r.id)}</div><div class="s">${esc(r.phu)} · ${fmt(r.t)}</div></span><span class="q">${qty(r)}</span></div>`).join('')}</div>`:'<div class="card empty">No records yet.</div>'}`);
 }
 /* sync */
 function sync(){
@@ -490,10 +489,10 @@ function sync(){
   shell(`<div class="card"><div class="big">${p}</div><div class="sub" style="text-align:center;margin:6px 0 0">Pending</div></div>
   ${p?'':'<div class="banner">✓ All records synced ✓</div>'}
   <div class="card"><label style="display:flex;align-items:center;gap:10px;font:400 14px var(--body)"><input type="checkbox" ${ui.off?'checked':''} onchange="ui.off=this.checked;toast(ui.off?'Offline mode on':'Back online')"> Simulate no network (testing)</label></div>
-  ${p?`<div class="card">${S.disp.filter(r=>!r.synced).map(r=>`<div class="row"><span class="sm"><div class="t">${esc(r.id)}</div><div class="s">${esc(r.phu)}</div></span><span class="chip w">Pending</span></div>`).join('')}</div>`:''}`,
+  ${p?`<div class="card">${mine().filter(r=>!r.synced).map(r=>`<div class="row"><span class="sm"><div class="t">${esc(r.id)}</div><div class="s">${esc(r.phu)}</div></span><span class="chip w">Pending</span></div>`).join('')}</div>`:''}`,
   `<button class="btn btn-primary" ${p?'':'disabled'} onclick="retry()">RETRY ALL PENDING</button>`);
 }
-function retry(){if(ui.off||navigator.onLine===false)return toast('No network connection');S.disp.forEach(r=>r.synced=true);save();sync();}
+function retry(){if(ui.off||navigator.onLine===false)return toast('No network connection');mine().forEach(r=>r.synced=true);save();sync();}
 loadCache();render();initCascade();
 </script>
 <script>
